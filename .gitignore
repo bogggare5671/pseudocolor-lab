@@ -1,0 +1,6 @@
+out/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+pseudocolor_lab.bak.html
