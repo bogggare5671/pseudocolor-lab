@@ -247,7 +247,7 @@
     </label>
   </div>
   <div class="scroll"><table class="keff">
-    <thead><tr><th></th><th>К<sub>эф1</sub> · Δ=5</th><th>К<sub>эф2</sub> · Δ=2</th></tr></thead>
+    <thead><tr><th></th><th>К<sub>эф1</sub> (вставка +5)</th><th>К<sub>эф2</sub> (вставка +2)</th></tr></thead>
     <tbody id="keff"></tbody>
   </table></div>
   <p class="hint">
@@ -397,7 +397,9 @@ function kEff(lut,dl,th){
     if(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])>=th){vis++; mask[l]=1;}}
   return {k:vis/256, mask};}
 function greyLUT(){const g=new Uint8ClampedArray(768); for(let l=0;l<256;l++) g[l*3]=g[l*3+1]=g[l*3+2]=l; return g;}
-const fmtK=k=>{const x=Math.round(k*100)/10; return `<b>${Math.round(k*100)}%</b> <span style="color:var(--faint)">(${String(x).replace('.',',')}/10)</span>`;};
+/* К_эф в виде как в отчёте: X — доля шкалы 0…10 с точностью до десятых, % = X·10 */
+const kX=k=>Math.round(k*100)/10;
+const fmtK=k=>{const x=kX(k); return `<b>${String(x).replace('.',',')}</b><span style="color:var(--faint)">/10·100% =</span> <b>${Math.round(x*10)}%</b>`;};
 function drawKeff(){
   const th=st.thr, rows=[
     ['без псевдоцветов', greyLUT(), 'ref'],
