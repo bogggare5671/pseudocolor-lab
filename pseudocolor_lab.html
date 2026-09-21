@@ -100,29 +100,32 @@
        padding:1px 5px;color:var(--dim);background:var(--panel-2)}
   .warn{color:var(--hot);font-size:12px;min-height:18px;margin-top:8px}
 
-  #strip{display:flex;gap:5px;overflow-x:auto;padding:2px 0 8px;margin-top:10px;
-       scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
-  #strip::-webkit-scrollbar{height:8px}
-  #strip::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px}
-  #strip::-webkit-scrollbar-thumb:hover{background:var(--faint)}
-  #strip canvas{height:60px;border:1px solid var(--rule);border-radius:4px;cursor:pointer;
-       flex:none;transition:border-color .12s}
-  #strip canvas:hover{border-color:var(--faint)}
-  #strip canvas.on{border-color:var(--hot);box-shadow:0 0 0 1px var(--hot)}
 
   @media (max-width:960px){
     main{grid-template-columns:1fr}
-    .bar h1{width:100%;margin:0}
+    .bar h1{width:100%;margin:0;white-space:normal}
     section{padding:16px}
   }
+  button:disabled,.step button:disabled{opacity:.35;cursor:not-allowed}
+  .step input:disabled{color:var(--dim)}
+  .map{height:auto}
+  .mapcap{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font:11px var(--mono);color:var(--faint);margin:6px 0 0}
+  .mapcap i{font-style:normal;display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+  table.keff{border-collapse:collapse;font:13px var(--mono);margin-top:6px;min-width:min(100%,420px)}
+  table.keff th,table.keff td{border-bottom:1px solid var(--rule);padding:6px 10px;text-align:right}
+  table.keff th:first-child,table.keff td:first-child{text-align:left;font-family:inherit;color:var(--dim)}
+  table.keff thead th{font-weight:500;color:var(--faint);font-size:11px}
+  table.keff td b{color:var(--ink);font-weight:500}
+  table.keff tr.ref td{color:var(--faint)}
+  .scroll{overflow-x:auto}
 </style>
 </head>
 <body>
 
 <div class="bar">
-  <h1>Псевдоцвета <span>— кривые по отсчётам и диаграмма цветности</span></h1>
+  <h1>Псевдоцвета <span>— цветовое кодирование по диаграмме цветности</span></h1>
 
-  <label>отсчётов
+  <label><span id="nLbl">отсчётов</span>
     <span class="step">
       <button type="button" id="nDn" aria-label="меньше">−</button>
       <input type="number" id="n" min="2" max="64" value="11" aria-label="число отсчётов">
@@ -130,66 +133,80 @@
     </span>
   </label>
 
-  <label>шаг по вертикали
-    <select id="snapY">
-      <option value="1">свободно</option><option value="8">8</option>
-      <option value="16" selected>16</option><option value="64">64</option>
-    </select>
-  </label>
-
   <label>система <select id="sys"></select></label>
 
   <label>алгоритм
     <select id="algo">
-      <option value="manual">свой</option>
+      <option value="manual">произвольный</option>
       <option value="spitri">спирально-треугольный</option>
       <option value="stigma">стигмаобразный</option>
       <option value="circle">круговой</option>
-      <option value="spiral">спиральный</option>
+    </select>
+  </label>
+
+  <label>вариант
+    <select id="variant">
+      <option value="">—</option>
+      <option value="v1t">1 — по таблице (профили)</option>
+      <option value="v1p">1 — по таблице (путь)</option>
+      <option value="a1">1 — путь из ACIDA</option>
+      <option value="a2">2 — путь из ACIDA</option>
+      <option value="a10">10 — путь из ACIDA</option>
     </select>
   </label>
 </div>
 
 <main>
 <section>
-  <h2>Профили R, G, B по отсчётам</h2>
+  <h2>Профили R, G, B</h2>
   <div class="plot"><span class="tag" style="color:var(--r)">R</span><canvas id="cR"></canvas></div>
   <div class="plot"><span class="tag" style="color:var(--g)">G</span><canvas id="cG"></canvas></div>
   <div class="plot"><span class="tag" style="color:var(--b)">B</span><canvas id="cB"></canvas></div>
   <div class="ruler" id="ruler"></div>
-  <p class="hint">
-    Клик — поставить точку, перетаскивание — двигать, <kbd>alt</kbd> или двойной клик — удалить.
-    По горизонтали точка садится на отсчёт, между соседними всё считается линейно.
-    Крайние точки не удаляются.
-  </p>
-
-  <h2 class="sp">Карта псевдоцветов</h2>
-  <canvas id="map" class="map" width="512" height="26"></canvas>
-  <p class="cap">уровень яркости 0 → 255</p>
+  <p class="hint" id="phint"></p>
 
   <div class="row">
-    <label><input type="checkbox" id="mul"> режим умножения</label>
-    <span class="gam">гамма
-      <i><b style="color:var(--r)">R</b><span class="step">
-        <button type="button" data-for="gR" data-d="-1" aria-label="меньше">−</button>
-        <input type="number" id="gR" min="0" max="3" step="0.05" value="0" aria-label="гамма R">
-        <button type="button" data-for="gR" data-d="1" aria-label="больше">+</button></span></i>
-      <i><b style="color:var(--g)">G</b><span class="step">
-        <button type="button" data-for="gG" data-d="-1" aria-label="меньше">−</button>
-        <input type="number" id="gG" min="0" max="3" step="0.05" value="0" aria-label="гамма G">
-        <button type="button" data-for="gG" data-d="1" aria-label="больше">+</button></span></i>
-      <i><b style="color:var(--b)">B</b><span class="step">
-        <button type="button" data-for="gB" data-d="-1" aria-label="меньше">−</button>
-        <input type="number" id="gB" min="0" max="3" step="0.05" value="0" aria-label="гамма B">
-        <button type="button" data-for="gB" data-d="1" aria-label="больше">+</button></span></i>
-    </span>
-    <span class="cap">0 — по стандарту системы</span>
+    <label>шаг по вертикали
+      <select id="snapY">
+        <option value="1">свободно</option><option value="8">8</option>
+        <option value="16" selected>16</option><option value="64">64</option>
+      </select>
+    </label>
+    <button id="x2">Удвоить отсчёты</button>
+  </div>
+
+  <h2 class="sp">Шкала сопоставления</h2>
+  <canvas id="map" class="map" width="512" height="58"></canvas>
+  <div class="mapcap">
+    <span>0 → 255</span><span>сверху исходная яркость, под ней — её цвет</span>
+    <span><i style="background:#E0A33C"></i>Δ=5</span><span>полоса тестового изображения различима (К<sub>эф1</sub>)</span>
+    <span><i style="background:#8A949D"></i>Δ=2</span><span>то же для слабой полосы (К<sub>эф2</sub>)</span>
   </div>
 
   <div class="row">
-    <button id="reset">Вариант 1</button>
+    <label><input type="checkbox" id="cont" checked> непрерывный путь</label>
+    <label><input type="checkbox" id="mul"> умножать</label>
+  </div>
+  <div class="row">
+    <span class="gam">гамма
+      <i><b style="color:var(--r)">R</b><span class="step">
+        <button type="button" data-for="gR" data-d="-1" aria-label="меньше">−</button>
+        <input type="number" id="gR" min="0" max="3" step="0.05" value="1" aria-label="гамма R">
+        <button type="button" data-for="gR" data-d="1" aria-label="больше">+</button></span></i>
+      <i><b style="color:var(--g)">G</b><span class="step">
+        <button type="button" data-for="gG" data-d="-1" aria-label="меньше">−</button>
+        <input type="number" id="gG" min="0" max="3" step="0.05" value="1" aria-label="гамма G">
+        <button type="button" data-for="gG" data-d="1" aria-label="больше">+</button></span></i>
+      <i><b style="color:var(--b)">B</b><span class="step">
+        <button type="button" data-for="gB" data-d="-1" aria-label="меньше">−</button>
+        <input type="number" id="gB" min="0" max="3" step="0.05" value="1" aria-label="гамма B">
+        <button type="button" data-for="gB" data-d="1" aria-label="больше">+</button></span></i>
+    </span>
+  </div>
+  <p class="cap">1 — без коррекции, как в ACIDA · 0 — по стандарту системы</p>
+
+  <div class="row">
     <button id="clear">Очистить</button>
-    <button id="x2">Удвоить отсчёты</button>
     <button id="exp" class="go">Сохранить json</button>
     <button id="imp">Загрузить json</button>
     <input type="file" id="impf" accept=".json" hidden>
@@ -200,10 +217,9 @@
   <h2>Диаграмма цветности CIE xy</h2>
   <canvas id="cie" width="880" height="840"></canvas>
   <p class="hint">
-    Клик по диаграмме задаёт путь кодирования: он равномерно раскладывается
-    по текущему числу отсчётов и пишется сразу в три профиля, дальше их можно править слева.
-    Правая кнопка убирает последнюю точку пути. Число отсчётов задаётся только в шапке —
-    смена системы или алгоритма его не меняет.
+    Клик — новая точка пути, перетаскивание — сдвинуть точку, <kbd>alt</kbd>-клик или двойной клик — удалить,
+    правая кнопка — убрать последнюю. Как в ACIDA, уровни яркости раскладываются <b>по длине пути</b>:
+    длинный отрезок получает больше уровней, чем короткий, сколько бы точек на нём ни стояло.
   </p>
   <p class="warn" id="warn"></p>
 
@@ -213,36 +229,76 @@
     <input type="file" id="file" accept="image/*" hidden>
     <button id="test">Тестовое 1.bmp</button>
     <button id="save">Скачать обработанное</button>
-    <button id="sheet">Кадры одним листом</button>
+    <button id="sheet">Лист для отчёта</button>
   </div>
   <div class="imgs">
     <div><canvas id="src" width="360" height="246"></canvas><p class="cap">исходное</p></div>
     <div><canvas id="dst" width="360" height="246"></canvas><p class="cap">обработанное</p></div>
   </div>
-  <div id="strip"></div>
-  <p class="cap">кадры: путь задан по первый отрезок, по второй и так далее</p>
+
+  <h2 class="sp">К<sub>эф</sub> — расчётная оценка</h2>
+  <div class="row">
+    <label>порог различимости
+      <select id="thr">
+        <option value="2.3">ΔE ≥ 2,3 — на пределе</option>
+        <option value="5" selected>ΔE ≥ 5 — заметно сразу</option>
+        <option value="10">ΔE ≥ 10 — отчётливо</option>
+      </select>
+    </label>
+  </div>
+  <div class="scroll"><table class="keff">
+    <thead><tr><th></th><th>К<sub>эф1</sub> · Δ=5</th><th>К<sub>эф2</sub> · Δ=2</th></tr></thead>
+    <tbody id="keff"></tbody>
+  </table></div>
+  <p class="hint">
+    Доля шкалы 0…10 тестового изображения, на которой полоса с приращением яркости Δ отличается от фона
+    на ΔE*ab не меньше порога. Это не замена замеру: в лабе К<sub>эф</sub> оценивают глазом по тестовому
+    изображению, и числа из образца отчёта этот критерий не воспроизводит ни при каком пороге.
+    Годится, чтобы сравнивать пути между собой и видеть, где на шкале цвет меняется быстро (полоски под шкалой).
+  </p>
 </section>
 </main>
 
 <script>
+/* ============================================================
+   Модель ACIDA (восстановлена по «шкале сопоставления» трёх скриншотов,
+   средняя ошибка ≈5/255):
+   · путь — ломаная из точек, поставленных на диаграмме;
+   · уровни яркости 0…255 раскладываются по ДЛИНЕ пути в xy;
+   · между точками — линейное смешение RGB цветов вершин,
+     затем нормировка по максимальному каналу;
+   · гамма на выходе не применяется.
+   Второй источник цвета — профили R, G, B по отсчётам (таблица варианта).
+   ============================================================ */
 const SYS={
-  srgb  :{n:'sRGB / Rec.709', R:[.640,.330],G:[.300,.600],B:[.150,.060],W:[.3127,.3290],g:2.2},
-  ebu   :{n:'PAL/SECAM (EBU)',R:[.640,.330],G:[.290,.600],B:[.150,.060],W:[.3127,.3290],g:2.8},
-  ntsc  :{n:'NTSC 1953',      R:[.670,.330],G:[.210,.710],B:[.140,.080],W:[.3101,.3162],g:2.2},
-  smptec:{n:'SMPTE-C',        R:[.630,.340],G:[.310,.595],B:[.155,.070],W:[.3127,.3290],g:2.2},
-  adobe :{n:'Adobe RGB 1998', R:[.640,.330],G:[.210,.710],B:[.150,.060],W:[.3127,.3290],g:2.2},
-  p3    :{n:'DCI-P3 display', R:[.680,.320],G:[.265,.690],B:[.150,.060],W:[.3127,.3290],g:2.6},
-  bt2020:{n:'Rec.2020',       R:[.708,.292],G:[.170,.797],B:[.131,.046],W:[.3127,.3290],g:2.4},
+  srgb  :{n:'sRGB / Rec.709',            R:[.640,.330],G:[.300,.600],B:[.150,.060],W:[.3127,.3290],g:2.2},
+  ebu   :{n:'PAL/SECAM (EBU)',           R:[.640,.330],G:[.290,.600],B:[.150,.060],W:[.3127,.3290],g:2.8},
+  ntsc  :{n:'NTSC 1953',                 R:[.670,.330],G:[.210,.710],B:[.140,.080],W:[.3101,.3162],g:2.2},
+  smptec:{n:'SMPTE-C',                   R:[.630,.340],G:[.310,.595],B:[.155,.070],W:[.3127,.3290],g:2.2},
+  adobe :{n:'Adobe RGB (1998)',          R:[.640,.330],G:[.210,.710],B:[.150,.060],W:[.3127,.3290],g:2.2},
+  wide  :{n:'Wide Gamut (700/525/450 нм)',R:[.7347,.2653],G:[.1152,.8264],B:[.1566,.0177],W:[.3457,.3585],g:2.2},
+  p3    :{n:'DCI-P3 display',            R:[.680,.320],G:[.265,.690],B:[.150,.060],W:[.3127,.3290],g:2.6},
+  bt2020:{n:'Rec.2020',                  R:[.708,.292],G:[.170,.797],B:[.131,.046],W:[.3127,.3290],g:2.4},
 };
+/* вариант 1: профили по 11 отсчётам (0…10), только изломы */
 const VAR1={R:[[0,255],[2,192],[4,0],[7,0],[10,255]],
             G:[[0,0],[3,0],[6,255],[8,128],[10,255]],
             B:[[0,0],[2,64],[4,255],[7,0],[8,0],[10,255]]};
+/* пути со скриншотов ACIDA (Wide Gamut), оцифрованы по центрам кружков, ±0,003 */
+const ACIDA={
+  a1 :[[.739,.263],[.690,.242],[.616,.212],[.360,.101],[.165,.015],[.155,.112],[.153,.217],[.123,.817],[.446,.531],[.348,.354]],
+  a2 :[[.737,.266],[.737,.266],[.516,.168],[.320,.084],[.241,.050],[.162,.019],[.158,.098],[.151,.189],[.137,.496],[.123,.824],
+       [.281,.679],[.411,.559],[.572,.414],[.444,.384],[.351,.356]],
+  a10:[[.734,.268],[.404,.568],[.344,.359],[.439,.145],[.162,.022],[.132,.524],[.120,.821]],
+};
 const CH=['R','G','B'], COL={R:'#E5484D',G:'#3FB950',B:'#4C8DFF'};
 const NMIN=2, NMAX=64;
-const st={sys:'srgb', n:11, curves:JSON.parse(JSON.stringify(VAR1)), snapY:16,
-          mul:false, gam:[0,0,0], path:[], img:null, lut:null, frame:-1};
+const st={sys:'srgb', n:11, pn:11, curves:JSON.parse(JSON.stringify(VAR1)), snapY:16,
+          cont:true, mul:false, gam:[1,1,1], path:[], img:null, lut:null, thr:5};
 const $=id=>document.getElementById(id);
+const clamp01=v=>Math.max(0,Math.min(1,v));
 const clampN=v=>Math.max(NMIN,Math.min(NMAX,Math.round(v)||NMIN));
+const isPath=()=>st.path.length>=2;
 
 /* ---- матрицы систем ---- */
 function det3(m){return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
@@ -260,6 +316,7 @@ function mats(key){
   const fwd=[0,1,2].map(r=>[P[0][r]*S[0],P[1][r]*S[1],P[2][r]*S[2]]);
   return MC[key]={fwd,inv:inv3(fwd)};
 }
+function rgbToXY(c,fwd){const X=mulv(fwd,c), s=X[0]+X[1]+X[2]; return s>1e-9?[X[0]/s,X[1]/s]:null;}
 
 /* ---- спектральный локус ---- */
 function gaus(x,m,s1,s2){const t=(x-m)/(x<m?s1:s2); return Math.exp(-0.5*t*t);}
@@ -277,81 +334,149 @@ function inLocus(x,y){let c=false;
     const [xi,yi]=LOCUS[i],[xj,yj]=LOCUS[j];
     if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c;}
   return c;}
-function inTri(x,y,s){const sg=(P,Q,R)=>(P[0]-R[0])*(Q[1]-R[1])-(Q[0]-R[0])*(P[1]-R[1]);
+function inTri(x,y,s,eps=0){const sg=(P,Q,R)=>(P[0]-R[0])*(Q[1]-R[1])-(Q[0]-R[0])*(P[1]-R[1]);
   const p=[x,y], d1=sg(p,s.R,s.G), d2=sg(p,s.G,s.B), d3=sg(p,s.B,s.R);
-  return !((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0));}
+  return !((d1<-eps||d2<-eps||d3<-eps)&&(d1>eps||d2>eps||d3>eps));}
+/* xy -> RGB системы, нормированный по максимуму (яркость не задаётся цветностью) */
 function xyToRGB(x,y,inv){
-  if(y<1e-5) return [0,0,0,true];
-  let c=mulv(inv,[x/y,1,(1-x-y)/y]);
-  const out=c.some(v=>v<-1e-4);
-  c=c.map(v=>Math.max(v,0));
+  if(y<1e-5) return [0,0,0];
+  let c=mulv(inv,[x/y,1,(1-x-y)/y]).map(v=>Math.max(v,0));
   const m=Math.max(c[0],c[1],c[2]);
-  return m>0?[c[0]/m,c[1]/m,c[2]/m,out]:[0,0,0,true];}
+  return m>0?[c[0]/m,c[1]/m,c[2]/m]:[0,0,0];}
 
-/* ---- профили -> карта ---- */
-function sortPts(p){p.sort((a,b)=>a[0]-b[0]);}
+/* ---- источник цвета: путь или профили ---- */
+let PC=null;                      // кеш пути: длины, цвета вершин
+function pathCache(){
+  if(PC) return PC;
+  const {inv}=mats(st.sys), p=st.path, d=[0];
+  for(let i=1;i<p.length;i++) d.push(d[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));
+  return PC={d, L:d[d.length-1], C:p.map(q=>xyToRGB(q[0],q[1],inv))};}
+/* доля яркости, на которую приходится i-я вершина пути */
+function vertexU(i){const {d,L}=pathCache(); return L>1e-12?d[i]/L:i/Math.max(1,st.path.length-1);}
 function curveVal(ch,u){
-  const p=st.curves[ch], t=Math.max(0,Math.min(1,u))*(st.n-1);
+  const p=st.curves[ch], t=clamp01(u)*(st.n-1);
   let k=0; while(k<p.length-2 && p[k+1][0]<t) k++;
   const [x0,y0]=p[k], [x1,y1]=p[Math.min(k+1,p.length-1)];
-  const a=x1===x0?0:Math.max(0,Math.min(1,(t-x0)/(x1-x0)));
-  return Math.max(0,Math.min(1,(y0+(y1-y0)*a)/255));}
-function buildLUT(uMax){
-  const s=SYS[st.sys], gm=st.gam.map(v=>v>0.005?v:s.g), lut=new Uint8ClampedArray(768);
+  const a=x1===x0?0:clamp01((t-x0)/(x1-x0));
+  return clamp01((y0+(y1-y0)*a)/255);}
+/* линейный цвет [0…1] для уровня u = яркость/255 */
+function colorAt(u){
+  u=clamp01(u);
+  if(isPath()){
+    const {d,L,C}=pathCache(), N=C.length;
+    if(L<1e-12) return C[N-1].slice();
+    const t=u*L; let k=0; while(k<N-2 && d[k+1]<=t) k++;
+    const seg=d[k+1]-d[k]; let f=seg>1e-12?clamp01((t-d[k])/seg):1;
+    if(!st.cont) f=f<0.5?0:1;                 /* дискретно: цвет ближайшей точки */
+    const c=[0,1,2].map(j=>C[k][j]*(1-f)+C[k+1][j]*f), m=Math.max(c[0],c[1],c[2]);
+    return m>0?c.map(v=>v/m):[0,0,0];}
+  const uu=st.cont?u:Math.round(u*(st.n-1))/(st.n-1);
+  return CH.map(ch=>curveVal(ch,uu));}
+function buildLUT(opt={}){
+  const s=SYS[st.sys], mul=opt.mul??st.mul, gm=st.gam.map(v=>v>0.005?v:s.g),
+        lut=new Uint8ClampedArray(768);
   for(let l=0;l<256;l++){
-    const u=Math.min(l/255, uMax===undefined?1:uMax);
+    const c=colorAt(l/255);
     for(let k=0;k<3;k++){
-      let v=Math.pow(curveVal(CH[k],u),1/gm[k]);
-      if(st.mul) v*=l/255;
+      let v=gm[k]===1?c[k]:Math.pow(c[k],1/gm[k]);
+      if(mul) v*=l/255;
       lut[l*3+k]=v*255;}}
   return lut;}
-function gamutWarn(){
-  const {fwd}=mats(st.sys); let out=0;
-  for(let l=0;l<256;l++){
-    const c=CH.map(ch=>curveVal(ch,l/255));
-    if(c[0]+c[1]+c[2]<1e-6) continue;
-    const X=mulv(fwd,c), s=X[0]+X[1]+X[2];
-    if(s>1e-9 && !inLocus(X[0]/s,X[1]/s)) out++;}
-  $('warn').textContent = out ? `Вне спектрального локуса: ${out} из 256 уровней — такие цвета физически не существуют.` : '';}
 
-/* ---- редактор профилей ---- */
+/* ---- К_эф: различимость полосы +Δ на тестовом изображении ---- */
+function lab(r,g,b){
+  const f=v=>{v/=255; return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4);};
+  const R=f(r),G=f(g),B=f(b);
+  const X=(0.4124*R+0.3576*G+0.1805*B)/0.95047, Y=0.2126*R+0.7152*G+0.0722*B, Z=(0.0193*R+0.1192*G+0.9505*B)/1.08883;
+  const h=t=>t>0.008856?Math.cbrt(t):7.787*t+16/116, fx=h(X),fy=h(Y),fz=h(Z);
+  return [116*fy-16,500*(fx-fy),200*(fy-fz)];}
+function kEff(lut,dl,th){
+  const L=[]; for(let l=0;l<256;l++) L.push(lab(lut[l*3],lut[l*3+1],lut[l*3+2]));
+  let vis=0, mask=new Uint8Array(256);
+  for(let l=0;l<256;l++){const a=L[l], b=L[Math.min(255,l+dl)];
+    if(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])>=th){vis++; mask[l]=1;}}
+  return {k:vis/256, mask};}
+function greyLUT(){const g=new Uint8ClampedArray(768); for(let l=0;l<256;l++) g[l*3]=g[l*3+1]=g[l*3+2]=l; return g;}
+const fmtK=k=>{const x=Math.round(k*100)/10; return `<b>${Math.round(k*100)}%</b> <span style="color:var(--faint)">(${String(x).replace('.',',')}/10)</span>`;};
+function drawKeff(){
+  const th=st.thr, rows=[
+    ['без псевдоцветов', greyLUT(), 'ref'],
+    [st.cont?'непрерывный путь':'дискретный путь', buildLUT({mul:false}), ''],
+    ['умножение', buildLUT({mul:true}), '']];
+  $('keff').innerHTML=rows.map(([name,l,c])=>{
+    const a=kEff(l,5,th).k, b=kEff(l,2,th).k;
+    return `<tr class="${c}"><td>${name}</td><td>${fmtK(a)}</td><td>${fmtK(b)}</td></tr>`;}).join('');}
+
+/* ---- предупреждения ---- */
+function gamutWarn(){
+  if(!isPath()){ $('warn').textContent=''; return; }
+  const s=SYS[st.sys], out=[], non=[];
+  /* допуск 0,01 по xy: точку сдвигаем к белому — промах мыши у самой границы не считается */
+  const nudge=(x,y)=>{const dx=s.W[0]-x, dy=s.W[1]-y, r=Math.hypot(dx,dy)||1; return [x+dx/r*0.01, y+dy/r*0.01];};
+  st.path.forEach(([x,y],i)=>{const [a,b]=nudge(x,y);
+    if(!inLocus(a,b)) non.push(i+1); else if(!inTri(a,b,s)) out.push(i+1);});
+  const m=[];
+  if(non.length) m.push(`точки ${non.join(', ')} вне спектрального локуса — такого цвета физически нет`);
+  if(out.length) m.push(`точки ${out.join(', ')} вне охвата ${s.n} — будут показаны ближайшим цветом охвата`);
+  $('warn').textContent=m.join('; ');}
+
+/* ---- профили ---- */
 function fit(cv){const r=devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight;
-  if(cv.width!==w*r){cv.width=w*r; cv.height=h*r;}
+  if(cv.width!==Math.round(w*r)){cv.width=Math.round(w*r); cv.height=Math.round(h*r);}
   const x=cv.getContext('2d'); x.setTransform(r,0,0,r,0,0); return [x,w,h];}
 const PAD={l:34,r:12,t:10,b:14};
-const px=(i,w)=>PAD.l+(i/(st.n-1))*(w-PAD.l-PAD.r);
+const pu=(u,w)=>PAD.l+u*(w-PAD.l-PAD.r);
+const px=(i,w)=>pu(i/(st.n-1),w);
 const py=(v,h)=>PAD.t+(1-v/255)*(h-PAD.t-PAD.b);
 const ix=(X,w)=>Math.round((X-PAD.l)/(w-PAD.l-PAD.r)*(st.n-1));
 const iv=(Y,h)=>(1-(Y-PAD.t)/(h-PAD.t-PAD.b))*255;
+let DENSE=null;                                  /* 256 цветов на кадр отрисовки */
+function dense(){return DENSE||(DENSE=Array.from({length:256},(_,l)=>colorAt(l/255)));}
 function drawPlot(ch){
-  const cv=$('c'+ch), [x,w,h]=fit(cv);
+  const cv=$('c'+ch), [x,w,h]=fit(cv), k=CH.indexOf(ch), path=isPath();
   x.clearRect(0,0,w,h);
   x.lineWidth=1; x.strokeStyle='#39424A'; x.setLineDash([1,3]);
-  const showGrid = st.n<=48;
-  if(showGrid) for(let i=0;i<st.n;i++){const X=Math.round(px(i,w))+.5;
-    x.beginPath(); x.moveTo(X,PAD.t); x.lineTo(X,h-PAD.b); x.stroke();}
+  const vl = path ? st.path.map((_,i)=>vertexU(i)) : (st.n<=48 ? Array.from({length:st.n},(_,i)=>i/(st.n-1)) : []);
+  vl.forEach(u=>{const X=Math.round(pu(u,w))+.5; x.beginPath(); x.moveTo(X,PAD.t); x.lineTo(X,h-PAD.b); x.stroke();});
   x.fillStyle='#5C666E'; x.font='10px ui-monospace,monospace'; x.textAlign='right';
-  for(let k=0;k<=4;k++){const v=k*255/4, Y=Math.round(py(v,h))+.5;
-    if(k){x.beginPath(); x.moveTo(PAD.l,Y); x.lineTo(w-PAD.r,Y); x.stroke();}
-    x.fillText(k===4?255:Math.round(v),PAD.l-6,Y+3);}
+  for(let q=0;q<=4;q++){const v=q*255/4, Y=Math.round(py(v,h))+.5;
+    if(q){x.beginPath(); x.moveTo(PAD.l,Y); x.lineTo(w-PAD.r,Y); x.stroke();}
+    x.fillText(q===4?255:Math.round(v),PAD.l-6,Y+3);}
   x.setLineDash([]); x.strokeStyle='#4C5862';
   x.beginPath(); x.moveTo(PAD.l+.5,PAD.t); x.lineTo(PAD.l+.5,h-PAD.b+.5);
   x.lineTo(w-PAD.r,h-PAD.b+.5); x.stroke();
-  const p=st.curves[ch];
+  /* сама кривая — всегда по фактическому цвету 256 уровней */
+  const D=dense();
   x.strokeStyle=COL[ch]; x.lineWidth=1.8; x.lineJoin='round'; x.beginPath();
-  p.forEach(([i,v],k)=>{const X=px(i,w),Y=py(v,h); k?x.lineTo(X,Y):x.moveTo(X,Y);});
+  D.forEach((c,l)=>{const X=pu(l/255,w), Y=py(c[k]*255,h); l?x.lineTo(X,Y):x.moveTo(X,Y);});
   x.stroke();
-  const r = p.length>32 ? 2.8 : 4.5;
-  p.forEach(([i,v])=>{const X=px(i,w),Y=py(v,h);
-    x.fillStyle='#0E1113'; x.beginPath(); x.arc(X,Y,r,0,7); x.fill();
+  /* маркеры: вершины пути либо изломы профиля */
+  const pts = path ? pathCache().C.map((c,i)=>[pu(vertexU(i),w), py(c[k]*255,h)])
+                   : st.curves[ch].map(([i,v])=>[px(i,w), py(v,h)]);
+  const r = pts.length>32 ? 2.8 : 4.5;
+  pts.forEach(([X,Y])=>{x.fillStyle='#0E1113'; x.beginPath(); x.arc(X,Y,r,0,7); x.fill();
     x.strokeStyle=COL[ch]; x.lineWidth=1.8; x.stroke();});}
 function drawRuler(){
-  const n=st.n, step=n<=17?1:n<=33?2:5, o=[];
-  for(let i=0;i<n;i++){
-    const f=i/(n-1), L=`calc(${(PAD.l-(PAD.l+PAD.r)*f).toFixed(2)}px + ${(f*100).toFixed(3)}%)`;
-    o.push(`<b style="left:${L}"></b>`);
-    if(i%step===0||i===n-1) o.push(`<span style="left:${L}">${i}</span>`);}
+  const o=[], at=(f,t)=>{const L=`calc(${(PAD.l-(PAD.l+PAD.r)*f).toFixed(2)}px + ${(f*100).toFixed(3)}%)`;
+    o.push(`<b style="left:${L}"></b>`); if(t!==null) o.push(`<span style="left:${L}">${t}</span>`);};
+  if(isPath()){                                  /* номера точек пути там, куда их поставила длина пути */
+    const w=$('ruler').clientWidth-PAD.l-PAD.r; let last=-1e9;
+    st.path.forEach((_,i)=>{const f=vertexU(i), X=f*w; const show=X-last>=14||i===st.path.length-1;
+      at(f, show?i+1:null); if(show) last=X;});
+  } else {
+    const n=st.n, step=n<=17?1:n<=33?2:5;
+    for(let i=0;i<n;i++) at(i/(n-1), (i%step===0||i===n-1)?i:null);}
   $('ruler').innerHTML=o.join('');}
+function syncUI(){
+  const path=isPath(), manual=$('algo').value==='manual';
+  $('nLbl').textContent = path ? 'точек пути' : 'отсчётов';
+  $('n').value = path ? st.path.length : st.n;
+  const lock = path && manual;                   /* ручной путь: число точек = число кликов */
+  ['n','nUp','nDn','x2'].forEach(id=>$(id).disabled=lock);
+  $('snapY').disabled=path;
+  $('phint').innerHTML = path
+    ? 'Профили рассчитаны по пути на диаграмме и здесь не редактируются. Засечки — точки пути: они стоят там, куда их поставила <b>длина пути</b>, а не через равные промежутки. Точки двигайте на диаграмме; «Очистить» вернёт ручной режим профилей.'
+    : 'Клик — поставить точку, перетаскивание — двигать, <kbd>alt</kbd> или двойной клик — удалить. По горизонтали точка садится на отсчёт, между соседними всё считается линейно. Крайние точки не удаляются.';}
 
 /* ---- диаграмма ---- */
 const XMAX=.8, YMAX=.9, CPAD=54;
@@ -369,10 +494,11 @@ function drawCIE(){
     const oc=off.getContext('2d'), d=oc.createImageData(w,h);
     for(let j=0;j<h;j++)for(let i=0;i<w;i++){
       const X=i/(w-1)*XMAX, Y=(1-j/(h-1))*YMAX, k=(j*w+i)*4;
-      if(!inLocus(X,Y)&&!inTri(X,Y,s)){d.data[k+3]=0; continue;}
+      const inL=inLocus(X,Y), inT=inTri(X,Y,s);
+      if(!inL&&!inT){d.data[k+3]=0; continue;}
       const c=xyToRGB(X,Y,inv);
       for(let q=0;q<3;q++) d.data[k+q]=Math.pow(c[q],1/s.g)*255;
-      d.data[k+3]=c[3]?70:225;}
+      d.data[k+3]=inT?225:70;}
     oc.putImageData(d,0,0); fillCache=off; fillKey=st.sys;}
   x.drawImage(fillCache,gx(0),gy(YMAX),gx(XMAX)-gx(0),gy(0)-gy(YMAX));
   x.strokeStyle='#2C343B'; x.lineWidth=1; x.setLineDash([1,4]);
@@ -395,74 +521,78 @@ function drawCIE(){
   x.textAlign='left'; x.fillText('R',gx(s.R[0])+9,gy(s.R[1])+6);
   x.textAlign='center'; x.fillText('G',gx(s.G[0]),gy(s.G[1])-11);
   x.textAlign='right'; x.fillText('B',gx(s.B[0])-9,gy(s.B[1])+15);
-  x.beginPath(); x.arc(gx(s.W[0]),gy(s.W[1]),4.5,0,7); x.fill();
-  const pts=[];
-  for(let l=0;l<=255;l++){
-    const c=CH.map(ch=>curveVal(ch,l/255));
-    if(c[0]+c[1]+c[2]<1e-6){pts.push(null); continue;}
-    const X=mulv(fwd,c), su=X[0]+X[1]+X[2];
-    pts.push(su>1e-9?[X[0]/su,X[1]/su]:null);}
-  x.strokeStyle='#12161A'; x.lineWidth=6; x.lineJoin='round'; x.beginPath(); let on=false;
-  pts.forEach(p=>{if(!p){on=false;return;}
-    on?x.lineTo(gx(p[0]),gy(p[1])):x.moveTo(gx(p[0]),gy(p[1])); on=true;});
-  x.stroke(); x.strokeStyle='#E0A33C'; x.lineWidth=2.5; x.stroke();
+  /* белая точка — крестом, как в ACIDA */
+  x.strokeStyle='#E8EDF1'; x.lineWidth=2; x.beginPath();
+  x.moveTo(gx(s.W[0])-7,gy(s.W[1])); x.lineTo(gx(s.W[0])+7,gy(s.W[1]));
+  x.moveTo(gx(s.W[0]),gy(s.W[1])-7); x.lineTo(gx(s.W[0]),gy(s.W[1])+7); x.stroke();
+  /* траектория по фактическим цветам 256 уровней */
+  const pts=dense().map(c=>c[0]+c[1]+c[2]<1e-6?null:rgbToXY(c,fwd));
+  x.lineJoin='round';
+  const trace=()=>{x.beginPath(); let on=false;
+    pts.forEach(p=>{if(!p){on=false;return;} on?x.lineTo(gx(p[0]),gy(p[1])):x.moveTo(gx(p[0]),gy(p[1])); on=true;});};
+  trace(); x.strokeStyle='#12161A'; x.lineWidth=6; x.stroke(); x.strokeStyle='#E0A33C'; x.lineWidth=2.5; x.stroke();
+  /* маркеры */
   x.font='14px ui-monospace,monospace'; x.textAlign='left';
-  const marks=segIdx(), dense=marks.length>20;
-  marks.forEach((i,k)=>{
-    const p=pts[Math.round(i/(st.n-1)*255)]; if(!p) return;
-    x.fillStyle='#12161A'; x.beginPath(); x.arc(gx(p[0]),gy(p[1]),dense?3.5:5.5,0,7); x.fill();
+  let marks;
+  if(st.path.length){                            /* точки пути — там, где кликнули, с номерами как в ACIDA */
+    if(isPath()){x.strokeStyle='rgba(224,163,60,.45)'; x.lineWidth=1; x.setLineDash([3,3]); x.beginPath();
+      st.path.forEach(([X,Y],i)=>i?x.lineTo(gx(X),gy(Y)):x.moveTo(gx(X),gy(Y))); x.stroke(); x.setLineDash([]);}
+    marks=st.path.map((p,i)=>[p,String(i+1)]);
+  } else {
+    const n=st.n, idx=[...new Set(CH.flatMap(ch=>st.curves[ch].map(q=>q[0])))].sort((a,b)=>a-b);
+    marks=idx.map(i=>[pts[Math.round(i/(n-1)*255)],String(i)]).filter(m=>m[0]);}
+  const dense_=marks.length>20;
+  marks.forEach(([p,t],k)=>{
+    x.fillStyle='#12161A'; x.beginPath(); x.arc(gx(p[0]),gy(p[1]),dense_?3.5:6,0,7); x.fill();
     x.strokeStyle='#E0A33C'; x.lineWidth=2; x.stroke();
-    if(!dense || k%5===0 || k===marks.length-1){
-      x.fillStyle='#E8EDF1'; x.fillText(i,gx(p[0])+9,gy(p[1])-7);}});}
+    if(!dense_||k%5===0||k===marks.length-1){x.fillStyle='#E8EDF1'; x.fillText(t,gx(p[0])+9,gy(p[1])-7);}});}
 
-/* ---- путь -> профили ----
-   путь — это ломаная в xy; она РАВНОМЕРНО раскладывается по st.n отсчётам.
-   st.n здесь не меняется: число отсчётов задаёт только пользователь. */
-function resample(p,n){
-  const d=[0];
-  for(let i=1;i<p.length;i++) d.push(d[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));
-  const L=d[d.length-1];
-  if(L<1e-9) return Array.from({length:n},()=>p[0].slice());
-  const out=[];
-  for(let i=0;i<n;i++){
-    const t=i/(n-1)*L;
-    let k=0; while(k<d.length-2 && d[k+1]<t) k++;
-    const seg=d[k+1]-d[k], a=seg>1e-12?Math.max(0,Math.min(1,(t-d[k])/seg)):0;
-    out.push([p[k][0]+(p[k+1][0]-p[k][0])*a, p[k][1]+(p[k+1][1]-p[k][1])*a]);}
-  return out;}
-function pathToCurves(){
-  const {inv}=mats(st.sys), p=st.path;
-  if(p.length<2) return;
-  const q = p.length===st.n ? p : resample(p,st.n);
-  CH.forEach((ch,k)=>st.curves[ch]=q.map((v,i)=>{
-    const c=xyToRGB(v[0],v[1],inv); return [i,Math.round(c[k]*255)];}));}
-
-/* каждый алгоритм даёт РОВНО n точек */
+/* ---- алгоритмы обхода: ровно n вершин ---- */
+function distToSeg(P,A,B){const vx=B[0]-A[0], vy=B[1]-A[1], t=clamp01(((P[0]-A[0])*vx+(P[1]-A[1])*vy)/(vx*vx+vy*vy));
+  return Math.hypot(P[0]-A[0]-vx*t, P[1]-A[1]-vy*t);}
 function presets(kind,n){
-  const s=SYS[st.sys], V=[s.R,s.G,s.B], W=s.W,
-        mix=(A,t)=>[W[0]+(A[0]-W[0])*t, W[1]+(A[1]-W[1])*t], p=[];
-  const f=k=>n>1?k/(n-1):0;
+  const s=SYS[st.sys], R=s.R, G=s.G, B=s.B, W=s.W,
+        lerp=(A,C,t)=>[A[0]+(C[0]-A[0])*t, A[1]+(C[1]-A[1])*t], p=[];
+  n=Math.max(3,n);
   if(kind==='spitri'){
-    for(let k=0;k<n;k++) p.push(mix(V[(k+2)%3], 1-f(k)*0.8));
+    /* вложенные треугольники B → R → G, каждая вершина ближе к белому, последняя — белый */
+    const V=[B,R,G];
+    for(let k=0;k<n;k++) p.push(lerp(W,V[k%3],1-k/(n-1)));
   }else if(kind==='stigma'){
-    for(let k=0;k<n;k++){const t=f(k);
-      p.push(k%2 ? mix(V[1],0.25+0.7*t) : mix(k%4?V[2]:V[0], 1-t*0.85));}
+    /* лесенка от синего: перекладины между сторонами B–R и B–G, параллельные R–G,
+       направление чередуется — B, BR₁, BG₁, BG₂, BR₂, BR₃, BG₃ … до R и G */
+    p.push(B.slice());
+    const m=Math.ceil((n-1)/2);
+    for(let j=1;j<=m;j++){const t=j/m, a=lerp(B,R,t), b=lerp(B,G,t);
+      for(const q of (j%2?[a,b]:[b,a])) if(p.length<n) p.push(q);}
   }else if(kind==='circle'){
-    for(let k=0;k<n;k++){const a=k/n*2*Math.PI;
-      p.push([W[0]+0.12*Math.cos(a), W[1]+0.12*Math.sin(a)]);}
-  }else if(kind==='spiral'){
-    for(let k=0;k<n;k++){const a=f(k)*3*2*Math.PI;
-      p.push([W[0]+0.17*f(k)*Math.cos(a), W[1]+0.17*f(k)*Math.sin(a)]);}}
-  return p;}
+    /* окружность вокруг белой точки против часовой, от сине-фиолетового сектора;
+       радиус — 85% расстояния до ближайшей стороны треугольника */
+    const r=0.85*Math.min(distToSeg(W,R,G),distToSeg(W,G,B),distToSeg(W,B,R));
+    for(let k=0;k<n;k++){const a=1.25*Math.PI+k/n*2*Math.PI; p.push([W[0]+r*Math.cos(a), W[1]+r*Math.sin(a)]);}
+  }
+  return p.map(q=>[+q[0].toFixed(4),+q[1].toFixed(4)]);}
+/* вариант 1 по таблице -> путь: цветность каждого отсчёта в Wide Gamut */
+function tablePath(){
+  const {fwd}=mats('wide'), saved=st.curves, sn=st.n; st.curves=VAR1; st.n=11;
+  const p=[]; for(let i=0;i<11;i++){const c=CH.map(ch=>curveVal(ch,i/10)), q=rgbToXY(c,fwd); if(q) p.push(q.map(v=>+v.toFixed(4)));}
+  st.curves=saved; st.n=sn; return p;}
 
-/* ---- карта, изображение, кадры ---- */
+/* ---- шкала, изображение ---- */
 function drawMap(){
-  const cv=$('map'), x=cv.getContext('2d'), H=cv.height, d=x.createImageData(512,H);
-  for(let i=0;i<512;i++){const l=(i/2)|0;
-    for(let j=0;j<H;j++){const k=(j*512+i)*4;
-      d.data[k]=st.lut[l*3]; d.data[k+1]=st.lut[l*3+1];
-      d.data[k+2]=st.lut[l*3+2]; d.data[k+3]=255;}}
+  const cv=$('map'), x=cv.getContext('2d'), W=cv.width, d=x.createImageData(W,cv.height);
+  const m5=kEff(st.lut,5,st.thr).mask, m2=kEff(st.lut,2,st.thr).mask;
+  const put=(i,j,r,g,b)=>{const k=(j*W+i)*4; d.data[k]=r; d.data[k+1]=g; d.data[k+2]=b; d.data[k+3]=255;};
+  for(let i=0;i<W;i++){const l=Math.min(255,(i*256/W)|0);
+    for(let j=0;j<cv.height;j++){
+      if(j<16) put(i,j,l,l,l);
+      else if(j<40) put(i,j,st.lut[l*3],st.lut[l*3+1],st.lut[l*3+2]);
+      else if(j<42) put(i,j,14,17,19);
+      else if(j<49) m5[l]?put(i,j,224,163,60):put(i,j,30,36,41);
+      else if(j<51) put(i,j,14,17,19);
+      else m2[l]?put(i,j,138,148,157):put(i,j,30,36,41);}}
   x.putImageData(d,0,0);}
+/* тестовое изображение: две половины — полоса +5 и полоса +2 на линейном градиенте, шкала 0…10 */
 function testImage(w,h){
   const c=document.createElement('canvas'); c.width=w; c.height=h;
   const x=c.getContext('2d'), d=x.createImageData(w,h), half=h/2;
@@ -470,67 +600,55 @@ function testImage(w,h){
     const part=j<half?0:1, jj=j-part*half, dl=part?2:5;
     let v=Math.round(i/(w-1)*255);
     if(jj>=half*0.38 && jj<half*0.76) v=Math.min(255,v+dl);
-    if(jj>=half*0.79){
-      const tick=Math.abs(i-Math.round(Math.round(i/(w-1)*20)*(w-1)/20))<1;
-      v = jj<half*0.79+2 ? 136 : (tick?200:0);}
+    if(jj>=half*0.79) v = jj<half*0.79+2 ? 136 : 0;
     const k=(j*w+i)*4; d.data[k]=d.data[k+1]=d.data[k+2]=v; d.data[k+3]=255;}
-  x.putImageData(d,0,0); return x.getImageData(0,0,w,h);}
+  x.putImageData(d,0,0);
+  x.fillStyle='rgb(200,200,200)'; x.font=`bold ${Math.round(h*0.04)}px sans-serif`; x.textBaseline='top';
+  for(let part=0;part<2;part++){
+    const y0=part*half+half*0.79+4;
+    for(let k=0;k<=20;k++){const X=Math.round(k/20*(w-1)); x.fillRect(Math.min(w-3,Math.max(0,X-1)),y0,3,k%2?half*0.04:half*0.07);}
+    for(let k=0;k<=10;k++){const X=k/10*(w-1);
+      x.textAlign=k===0?'left':k===10?'right':'center'; x.fillText(String(k),X,y0+half*0.085);}}
+  return x.getImageData(0,0,w,h);}
 function paint(ctx,w,h,lut,orig){
   if(!st.img) return;
-  const out=ctx.createImageData(w,h), sx=st.img.width/w, sy=st.img.height/h;
-  for(let j=0;j<h;j++)for(let i=0;i<w;i++){
-    const k=(Math.min(st.img.height-1,(j*sy)|0)*st.img.width
-             +Math.min(st.img.width-1,(i*sx)|0))*4;
-    const l=Math.round(0.299*st.img.data[k]+0.587*st.img.data[k+1]+0.114*st.img.data[k+2]);
-    const o=(j*w+i)*4;
-    if(orig){out.data[o]=out.data[o+1]=out.data[o+2]=l;}
-    else{out.data[o]=lut[l*3]; out.data[o+1]=lut[l*3+1]; out.data[o+2]=lut[l*3+2];}
-    out.data[o+3]=255;}
+  const out=ctx.createImageData(w,h), sx=st.img.width/w, sy=st.img.height/h, s=st.img.data;
+  for(let j=0;j<h;j++){const row=Math.min(st.img.height-1,(j*sy)|0)*st.img.width;
+    for(let i=0;i<w;i++){
+      const k=(row+Math.min(st.img.width-1,(i*sx)|0))*4;
+      const l=Math.round(0.299*s[k]+0.587*s[k+1]+0.114*s[k+2]), o=(j*w+i)*4;
+      if(orig){out.data[o]=out.data[o+1]=out.data[o+2]=l;}
+      else{out.data[o]=lut[l*3]; out.data[o+1]=lut[l*3+1]; out.data[o+2]=lut[l*3+2];}
+      out.data[o+3]=255;}}
   ctx.putImageData(out,0,0);}
-function segIdx(){
-  return [...new Set(CH.flatMap(ch=>st.curves[ch].map(q=>q[0])))]
-    .filter(i=>i>=0&&i<=st.n-1).sort((a,b)=>a-b);}
-function buildStrip(){
-  const box=$('strip'); box.innerHTML='';
-  const idx=segIdx().slice(1);
-  if(st.frame>=idx.length) st.frame=-1;
-  idx.forEach((i,k)=>{
-    const c=document.createElement('canvas'); c.width=88; c.height=60;
-    c.title='путь по отсчёт '+i;
-    c.onclick=()=>{st.frame=st.frame===k?-1:k; refreshImg();};
-    if(k===st.frame) c.classList.add('on');
-    paint(c.getContext('2d'),88,60,buildLUT(i/(st.n-1)),false);
-    box.appendChild(c);});}
 function refreshImg(){
-  const idx=segIdx();
-  const uMax = st.frame>=0 && idx[st.frame+1]!==undefined ? idx[st.frame+1]/(st.n-1) : 1;
-  st.lut=buildLUT(uMax);
   paint($('src').getContext('2d'),$('src').width,$('src').height,null,true);
-  paint($('dst').getContext('2d'),$('dst').width,$('dst').height,st.lut,false);
-  drawMap();
-  [...$('strip').children].forEach((c,k)=>c.classList.toggle('on',k===st.frame));}
-function refresh(){CH.forEach(drawPlot); drawRuler(); drawCIE(); gamutWarn(); buildStrip(); refreshImg();}
+  paint($('dst').getContext('2d'),$('dst').width,$('dst').height,st.lut,false);}
+/* лёгкая перерисовка — во время перетаскивания */
+function redraw(){PC=null; DENSE=null; st.lut=buildLUT();
+  CH.forEach(drawPlot); drawRuler(); drawCIE(); drawMap();}
+function refresh(){redraw(); gamutWarn(); refreshImg(); drawKeff(); syncUI();}
 
-/* ---- мышь: профили ---- */
-function goManual(){st.path=[]; $('algo').value='manual';}
+/* ---- мышь: профили (только в режиме профилей) ---- */
+function toManualVariant(){$('variant').value='';}
 CH.forEach(ch=>{
   const cv=$('c'+ch); let drag=-1;
-  const hit=e=>{const b=cv.getBoundingClientRect(), X=e.clientX-b.left, Y=e.clientY-b.top,
-      p=st.curves[ch];
+  const hit=e=>{const b=cv.getBoundingClientRect(), X=e.clientX-b.left, Y=e.clientY-b.top, p=st.curves[ch];
     for(let k=0;k<p.length;k++)
       if(Math.hypot(px(p[k][0],b.width)-X,py(p[k][1],b.height)-Y)<11) return [k,X,Y,b];
     return [-1,X,Y,b];};
   const snap=v=>{const s=st.snapY; return Math.max(0,Math.min(255,Math.round(v/s)*s));};
   cv.addEventListener('pointerdown',e=>{
+    if(isPath()){ $('phint').animate([{color:'#E0A33C'},{color:''}],{duration:900}); return; }
     const [k,X,Y,b]=hit(e), p=st.curves[ch];
     if(k>=0&&(e.altKey||e.metaKey)){
-      if(k>0&&k<p.length-1){p.splice(k,1); goManual(); refresh();} return;}
+      if(k>0&&k<p.length-1){p.splice(k,1); toManualVariant(); refresh();} return;}
     if(k>=0){drag=k; cv.setPointerCapture(e.pointerId); return;}
     const i=Math.max(0,Math.min(st.n-1,ix(X,b.width)));
     if(p.some(q=>q[0]===i)) return;
-    p.push([i,snap(iv(Y,b.height))]); sortPts(p);
+    p.push([i,snap(iv(Y,b.height))]); p.sort((a,b)=>a[0]-b[0]);
     drag=p.findIndex(q=>q[0]===i); cv.setPointerCapture(e.pointerId);
-    goManual(); refresh();});
+    toManualVariant(); redraw();});
   cv.addEventListener('pointermove',e=>{
     if(drag<0) return;
     const b=cv.getBoundingClientRect(), p=st.curves[ch];
@@ -538,38 +656,60 @@ CH.forEach(ch=>{
     if(drag===0) i=0; else if(drag===p.length-1) i=st.n-1;
     else i=Math.max(p[drag-1][0]+1,Math.min(p[drag+1][0]-1,i));
     p[drag]=[i,snap(iv(e.clientY-b.top,b.height))];
-    drawPlot(ch); drawCIE();});
-  const stop=()=>{if(drag>=0){drag=-1; goManual(); refresh();}};
+    redraw();});
+  const stop=()=>{if(drag>=0){drag=-1; toManualVariant(); refresh();}};
   cv.addEventListener('pointerup',stop); cv.addEventListener('pointercancel',stop);
-  cv.addEventListener('dblclick',e=>{const [k]=hit(e), p=st.curves[ch];
-    if(k>0&&k<p.length-1){p.splice(k,1); goManual(); refresh();}});});
+  cv.addEventListener('dblclick',e=>{if(isPath()) return; const [k]=hit(e), p=st.curves[ch];
+    if(k>0&&k<p.length-1){p.splice(k,1); toManualVariant(); refresh();}});});
 
 /* ---- мышь: диаграмма ---- */
-const cie=$('cie');
+const cie=$('cie'); let cdrag=-1;
+const cpos=e=>{const b=cie.getBoundingClientRect(), k=cie.width/b.width;
+  return [(e.clientX-b.left)*k,(e.clientY-b.top)*k];};
+const chit=(X,Y)=>{for(let i=st.path.length-1;i>=0;i--){const [x,y]=st.path[i];
+  if(Math.hypot(gx(x)-X,gy(y)-Y)<14) return i;} return -1;};
+const toManual=()=>{if($('algo').value!=='manual'){$('algo').value='manual';} toManualVariant();};
 cie.addEventListener('pointerdown',e=>{
-  if(e.button===2) return;
-  const b=cie.getBoundingClientRect(), k=cie.width/b.width;
-  const x=ux((e.clientX-b.left)*k), y=uy((e.clientY-b.top)*k);
+  if(e.button!==0) return;
+  const [X,Y]=cpos(e), i=chit(X,Y);
+  if(i>=0 && (e.altKey||e.metaKey)){st.path.splice(i,1); toManual(); refresh(); return;}
+  if(i>=0){cdrag=i; cie.setPointerCapture(e.pointerId); return;}
+  const x=ux(X), y=uy(Y);
   if(x<0||y<0||x>XMAX||y>YMAX) return;
-  st.path.push([x,y]); $('algo').value='manual'; pathToCurves(); refresh();});
-cie.addEventListener('contextmenu',e=>{e.preventDefault();
-  st.path.pop(); pathToCurves(); refresh();});
+  toManual(); st.path.push([+x.toFixed(4),+y.toFixed(4)]); refresh();});
+cie.addEventListener('pointermove',e=>{
+  if(cdrag<0) return;
+  const [X,Y]=cpos(e);
+  st.path[cdrag]=[+Math.max(0,Math.min(XMAX,ux(X))).toFixed(4),+Math.max(0,Math.min(YMAX,uy(Y))).toFixed(4)];
+  toManual(); redraw();});
+const cstop=()=>{if(cdrag>=0){cdrag=-1; refresh();}};
+cie.addEventListener('pointerup',cstop); cie.addEventListener('pointercancel',cstop);
+cie.addEventListener('dblclick',e=>{const [X,Y]=cpos(e), i=chit(X,Y);
+  if(i>=0){st.path.splice(i,1); toManual(); refresh();}});
+cie.addEventListener('contextmenu',e=>{e.preventDefault(); st.path.pop(); toManual(); refresh();});
 
 /* ---- управление ---- */
 const sel=$('sys');
 Object.entries(SYS).forEach(([k,v])=>{const o=document.createElement('option');
   o.value=k; o.textContent=v.n; sel.appendChild(o);});
-sel.value='srgb';
-sel.onchange=e=>{st.sys=e.target.value;
+sel.value=st.sys;
+sel.onchange=e=>{st.sys=e.target.value; fillKey='';
   const algo=$('algo').value;
-  if(algo!=='manual') st.path=presets(algo,st.n);   /* тот же путь в новой системе */
-  if(st.path.length>1) pathToCurves();
+  if(algo!=='manual') st.path=presets(algo,st.pn);          /* алгоритм строится под треугольник системы */
   refresh();};
 $('algo').onchange=e=>{
+  toManualVariant();
   if(e.target.value==='manual'){st.path=[]; refresh(); return;}
-  st.path=presets(e.target.value,st.n); pathToCurves(); refresh();};
+  st.path=presets(e.target.value,st.pn); refresh();};
+$('variant').onchange=e=>{
+  const v=e.target.value; if(!v) return;
+  $('algo').value='manual'; st.sys='wide'; sel.value='wide';
+  if(v==='v1t'){st.path=[]; st.n=11; st.curves=JSON.parse(JSON.stringify(VAR1));}
+  else if(v==='v1p') st.path=tablePath();
+  else st.path=ACIDA[v].map(q=>q.slice());
+  refresh();};
 
-/* перенос точек профилей на новую сетку отсчётов */
+/* перенос изломов профилей на новую сетку отсчётов */
 function setN(n){
   const old=st.n; if(n===old) return; st.n=n;
   CH.forEach(ch=>{
@@ -579,22 +719,23 @@ function setN(n){
     if(!q.length) q.push([0,0]);
     if(q[0][0]!==0) q.unshift([0,q[0][1]]);
     if(q[q.length-1][0]!==n-1) q.push([n-1,q[q.length-1][1]]);
-    sortPts(q); st.curves[ch]=q;});}
-/* единственная точка входа для смены числа отсчётов */
+    q.sort((a,b)=>a[0]-b[0]); st.curves[ch]=q;});}
 function applyN(n){
   n=clampN(n);
   const algo=$('algo').value;
-  if(algo!=='manual'){st.n=n; st.path=presets(algo,n); pathToCurves();}
-  else if(st.path.length>1){st.n=n; pathToCurves();}
-  else setN(n);
-  $('n').value=st.n; refresh();}
+  if(algo!=='manual'){st.pn=Math.max(3,n); st.path=presets(algo,st.pn);}
+  else if(isPath()) return;                      /* ручной путь: точек столько, сколько кликов */
+  else {setN(n); toManualVariant();}
+  refresh();}
 $('n').onchange=e=>applyN(+e.target.value);
 $('n').oninput=e=>{if(e.target.value!=='') applyN(+e.target.value);};
-$('nUp').onclick=()=>applyN(st.n+1);
-$('nDn').onclick=()=>applyN(st.n-1);
-$('x2').onclick=()=>applyN(st.n*2);
+$('nUp').onclick=()=>applyN((isPath()?st.pn:st.n)+1);
+$('nDn').onclick=()=>applyN((isPath()?st.pn:st.n)-1);
+$('x2').onclick=()=>applyN((isPath()?st.pn:st.n)*2-1);   /* 2n−1: старые отсчёты ложатся на чётные */
 $('snapY').onchange=e=>{st.snapY=+e.target.value;};
+$('cont').onchange=e=>{st.cont=e.target.checked; refresh();};
 $('mul').onchange=e=>{st.mul=e.target.checked; refresh();};
+$('thr').onchange=e=>{st.thr=+e.target.value; drawMap(); drawKeff();};
 ['gR','gG','gB'].forEach((id,i)=>{
   const f=$(id), set=v=>{v=Math.max(0,Math.min(3,Math.round(v*100)/100||0));
     st.gam[i]=v; f.value=v; refresh();};
@@ -602,9 +743,7 @@ $('mul').onchange=e=>{st.mul=e.target.checked; refresh();};
   f.onchange=e=>set(+e.target.value||0);
   document.querySelectorAll(`.step button[data-for="${id}"]`).forEach(b=>
     b.onclick=()=>set(st.gam[i]+0.05*(+b.dataset.d)));});
-$('reset').onclick=()=>{st.n=11; $('n').value=11; st.path=[]; $('algo').value='manual';
-  st.curves=JSON.parse(JSON.stringify(VAR1)); st.frame=-1; refresh();};
-$('clear').onclick=()=>{st.path=[]; $('algo').value='manual'; st.frame=-1;
+$('clear').onclick=()=>{st.path=[]; $('algo').value='manual'; toManualVariant();
   CH.forEach(ch=>st.curves[ch]=[[0,0],[st.n-1,255]]); refresh();};
 
 $('pick').onclick=()=>$('file').click();
@@ -618,39 +757,48 @@ $('file').onchange=e=>{const f=e.target.files[0]; if(!f) return;
     const W=360, H=Math.round(h*W/w);
     ['src','dst'].forEach(id=>{$(id).width=W; $(id).height=H;});
     refresh(); URL.revokeObjectURL(img.src);};
-  img.src=URL.createObjectURL(f);};
+  img.src=URL.createObjectURL(f); e.target.value='';};
 $('test').onclick=()=>{st.img=testImage(720,494);
   ['src','dst'].forEach(id=>{$(id).width=360; $(id).height=246;}); refresh();};
 const dl=(n,u)=>{const a=document.createElement('a'); a.href=u; a.download=n; a.click();};
 $('save').onclick=()=>dl('pseudocolor.png',$('dst').toDataURL('image/png'));
+/* лист для отчёта: диаграмма + шкала + результат на белом фоне */
 $('sheet').onclick=()=>{
-  const idx=segIdx().slice(1), cols=Math.min(4,Math.max(1,idx.length)),
-        rows=Math.max(1,Math.ceil(idx.length/cols)), w=240, h=164;
-  const c=document.createElement('canvas'); c.width=cols*w; c.height=rows*h;
-  const x=c.getContext('2d'), t=document.createElement('canvas'); t.width=w; t.height=h;
-  idx.forEach((i,k)=>{paint(t.getContext('2d'),w,h,buildLUT(i/(st.n-1)),false);
-    x.drawImage(t,(k%cols)*w,Math.floor(k/cols)*h);});
-  dl('frames_sheet.png',c.toDataURL('image/png'));};
+  const cie_=$('cie'), dst=$('dst'), map=$('map'), W=1100, dw=560, dh=Math.round(dst.height*dw/dst.width);
+  const H=Math.max(560, 30+dh+20+70+120);
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+  x.fillStyle='#EEF1F4'; x.fillRect(10,10,520,H-20);
+  x.drawImage(cie_,20,20,500,500*cie_.height/cie_.width);
+  x.drawImage(dst,530,30,dw,dh);
+  x.drawImage(map,0,0,map.width,40,530,30+dh+20,dw,44);
+  x.fillStyle='#222'; x.font='15px sans-serif';
+  const lines=[`Система: ${SYS[st.sys].n}`,
+    `Режим: ${st.cont?'непрерывный путь':'дискретный путь'}${st.mul?', умножение':''}`,
+    `Точек пути: ${isPath()?st.path.length:'—'}${isPath()?'':' · отсчётов: '+st.n}`];
+  lines.forEach((t,i)=>x.fillText(t,530,30+dh+20+44+28+i*22));
+  dl('pseudocolor_sheet.png',c.toDataURL('image/png'));};
 $('exp').onclick=()=>{
-  const full=buildLUT(), lut=[];            /* всегда полная карта, без обрезки кадром */
+  const full=buildLUT(), lut=[];
   for(let l=0;l<256;l++) lut.push([full[l*3],full[l*3+1],full[l*3+2]]);
   dl('curves.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(
-    {n:st.n, system:st.sys, algorithm:$('algo').value, multiply:st.mul, gamma:st.gam,
+    {n:st.n, system:st.sys, algorithm:$('algo').value, points:st.pn, continuous:st.cont, multiply:st.mul, gamma:st.gam,
      R:st.curves.R, G:st.curves.G, B:st.curves.B, path_xy:st.path, lut},null,1)));};
 $('imp').onclick=()=>$('impf').click();
 $('impf').onchange=e=>{const f=e.target.files[0]; if(!f) return;
   f.text().then(t=>{const o=JSON.parse(t);
-    st.n=clampN(o.n||11); $('n').value=st.n;
-    if(o.system&&SYS[o.system]){st.sys=o.system; $('sys').value=o.system;}
-    $('algo').value = o.algorithm && o.algorithm!=='manual' ? o.algorithm : 'manual';
+    st.n=clampN(o.n||11);
+    if(o.system&&SYS[o.system]){st.sys=o.system; sel.value=o.system;}
+    $('algo').value = o.algorithm && $('algo').querySelector(`option[value="${o.algorithm}"]`) ? o.algorithm : 'manual';
+    st.pn=clampN(o.points||st.pn);
+    st.cont=o.continuous!==false; $('cont').checked=st.cont;
     st.mul=!!o.multiply; $('mul').checked=st.mul;
     if(Array.isArray(o.gamma)) st.gam=o.gamma.map(v=>Math.max(0,Math.min(3,+v||0)));
     ['gR','gG','gB'].forEach((id,i)=>$(id).value=st.gam[i]);
     CH.forEach(ch=>{if(o[ch]) st.curves[ch]=o[ch]
-      .map(([i,v])=>[Math.max(0,Math.min(st.n-1,i)),Math.max(0,Math.min(255,v))]);
-      sortPts(st.curves[ch]);});
-    st.path=Array.isArray(o.path_xy)?o.path_xy:[]; st.frame=-1;
-    if(st.path.length>1 && !o.R) pathToCurves();
+      .map(([i,v])=>[Math.max(0,Math.min(st.n-1,i)),Math.max(0,Math.min(255,v))])
+      .sort((a,b)=>a[0]-b[0]);});
+    st.path=Array.isArray(o.path_xy)?o.path_xy:[]; toManualVariant();
     refresh();
   }).catch(()=>alert('Не читается: нужен json с полями n, R, G, B.'));
   e.target.value='';};
